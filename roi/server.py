@@ -13,7 +13,8 @@ logger = logging.getLogger("server")
 
 
 def make_app():
-    urls = [(r"/api/v1/face", api.Face)]
+    urls = [(r"/api/v1/face/detection", api.DetectFaceAPI),
+            (r"/api/v1/face/recognition", api.RecognizeFaceAPI)]
     return Application(urls, debug=True)
 
 

@@ -31,21 +31,13 @@ class Recognition:
         self.detect = Detection()
         self.encoder = Encoder()
 
-    def add_identity(self, image, person_name):
-        faces = self.detect.find_faces(image)
-
-        if len(faces) == 1:
-            face = faces[0]
-            face.name = person_name
-            face.embedding = self.encoder.generate_embedding(face)
-            return faces
-
     def identify(self, image):
         faces = self.detect.find_faces(image)
 
         for i, face in enumerate(faces):
             if debug:
-                cv2.imshow("Face: " + str(i), face.image)
+                #cv2.imshow("Face: " + str(i), face.image)
+                cv2.imwrite("/tmp/face.jpg", face.image)
             face.embedding = self.encoder.generate_embedding(face)
 
         return faces

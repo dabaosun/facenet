@@ -12,7 +12,7 @@ def add_overlays(faces):
     if faces is not None:
         for face in faces:
             face_bb = face.bounding_box.astype(int)
-
+   
 
 def main(args):
 
