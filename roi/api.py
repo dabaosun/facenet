@@ -80,7 +80,7 @@ class DetectFaceAPI(APIHandler):
                 self.set_status(400, "not found body data in request.")
         except (TypeError, AttributeError) as err:
             logger.error(err)
-            self.set_status(400, "body type invalid.")
+            self.set_status(400, "invalid body type.")
             return
         except Exception as err:
             logger.error(err)
@@ -89,6 +89,36 @@ class DetectFaceAPI(APIHandler):
 
 
 class RecognizeFaceAPI(APIHandler):
+    def post(self, args=None):
+
+        box = self.get_argument("box", None)
+        body = self.request.body
+        try:
+
+            if body:
+                logger.debug(body)
+                image = np.asarray(bytearray(body), dtype="uint8")
+                image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+                if box:
+                    logger.debug(box)
+                    faces = face_recognition.identify(image)
+                    add_overlays(faces)
+
+                else:
+
+                    faces = face_recognition.identify(image)
+                    add_overlays(faces)
+            else:
+                logger.error("not found body in request.")
+                self.set_status(400, "not found body in request.")
+
+        except Exception as err:
+            logger.error(err)
+            self.set_status(err.status_code)
+            return
+
+
+class SignatureFaceAPI(APIHandler):
     def post(self, args=None):
 
         box = self.get_argument("box", None)
