@@ -1,13 +1,9 @@
 # coding=utf-8
-import tornado.web
-
-from tornado.web import RequestHandler
+import io
 import logging
 import face
 import cv2
-import numpy
 import PIL
-import io
 
 import numpy as np
 import urllib
@@ -18,11 +14,11 @@ import urllib.parse
 import urllib.request
 import json
 import tornado.escape as escape
+
+from tornado.web import RequestHandler
+import face
+
 logger = logging.getLogger("api")
-
-face_recognition = face.Recognition()
-face_detectiion = face.Detection()
-
 
 class APIHandler(RequestHandler):
     def data_received(self, chunk):
@@ -39,48 +35,72 @@ class APIHandler(RequestHandler):
         self.set_header('Access-Control-Allow-Methods',
                         'POST, GET, OPTIONS, HEAD')
 
+    def post(self):
+        self.options()
+
     def get(self):
+        self.options()
         self.set_status(405)
 
     def put(self):
+        self.options()
         self.set_status(405)
 
     def delete(self):
+        self.options()
         self.set_status(405)
+
+    def buildresponse(self, faces):
+        faceslist = []
+        for i, face in enumerate(faces):
+            box = face.bounding_box.tolist()
+            if not face.embedding is None:
+                if (logger.getEffectiveLevel() == logging.DEBUG):
+                    np.save("/tmp/face-{0}-{1}.npy", face.embedding)
+                faceslist.append({
+                    "point": {
+                        "x": box[0],
+                        "y": box[1],
+                        "w": box[2],
+                        "h": box[3]
+                    },
+                    "signature":
+                    np.asarray(face.embedding).tolist()
+                })
+            else:
+                faceslist.append({
+                    "point": {
+                        "x": box[0],
+                        "y": box[1],
+                        "w": box[2],
+                        "h": box[3]
+                    }
+                })
+
+        resp = {}
+        resp['faces'] = faceslist
+        resp['result'] = len(faces) > 0
+        return json.dumps(resp, sort_keys=True)
 
 
 class DetectFaceAPI(APIHandler):
     def post(self, args=None):
+        super(DetectFaceAPI, self).post()
         body = self.request.body
+        if not body:
+            self.set_status(400, "not found body data in request.")
+            return
+        logger.debug(body)
+
         try:
-
-            if body:
-                logger.debug(body)
-                image = np.asarray(bytearray(body), dtype="uint8")
-                image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-                faces = face_detectiion.find_faces(image)
-                logger.debug("faces found : %d" % len(faces))
-
-                t = {}
-                p = []
-                for face in faces:
-                    f = {}
-                    box = face.bounding_box.tolist()
-                    f['x'] = box[0]
-                    f['y'] = box[1]
-                    f['w'] = box[2]
-                    f['h'] = box[3]
-                    p.append(f)
-                t['faces'] = p
-                t['result'] = len(faces) > 0
-
-                self.write(json.dumps(t, sort_keys=False))
-            else:
-                logger.error("not found body in request.")
-                self.set_status(400, "not found body data in request.")
+            image = np.asarray(bytearray(body), dtype="uint8")
+            image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+            faces = self.application.detection.find_faces(image)
+            logger.debug("faces found : %d" % len(faces))
+            self.write(self.buildresponse(faces))
         except (TypeError, AttributeError) as err:
             logger.error(err)
-            self.set_status(400, "invalid body type.")
+            self.set_status(400, str(err))
             return
         except Exception as err:
             logger.error(err)
@@ -88,60 +108,34 @@ class DetectFaceAPI(APIHandler):
             return
 
 
-class RecognizeFaceAPI(APIHandler):
-    def post(self, args=None):
-
-        box = self.get_argument("box", None)
-        body = self.request.body
-        try:
-
-            if body:
-                logger.debug(body)
-                image = np.asarray(bytearray(body), dtype="uint8")
-                image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-                if box:
-                    logger.debug(box)
-                    faces = face_recognition.identify(image)
-                    add_overlays(faces)
-
-                else:
-
-                    faces = face_recognition.identify(image)
-                    add_overlays(faces)
-            else:
-                logger.error("not found body in request.")
-                self.set_status(400, "not found body in request.")
-
-        except Exception as err:
-            logger.error(err)
-            self.set_status(err.status_code)
-            return
-
-
 class SignatureFaceAPI(APIHandler):
     def post(self, args=None):
+        super(SignatureFaceAPI, self).post()
 
-        box = self.get_argument("box", None)
+        # boxes = self.get_argument("boxes", None)
+        # if not boxes:
+        #     self.set_status(400, "not found boxes json parameter in request.")
+        #     return
+        # logger.debug(boxes)
+
         body = self.request.body
+        if not body:
+            self.set_status(400, "not found body data in request.")
+            return
+        logger.debug(body)
+
         try:
+            # boxes = json.loads(boxes)
 
-            if body:
-                logger.debug(body)
-                image = np.asarray(bytearray(body), dtype="uint8")
-                image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-                if box:
-                    logger.debug(box)
-                    faces = face_recognition.identify(image)
-                    add_overlays(faces)
+            image = np.asarray(bytearray(body), dtype="uint8")
+            image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+            faces = self.application.recognition.identify(image)
+            self.write(self.buildresponse(faces))
 
-                else:
-
-                    faces = face_recognition.identify(image)
-                    add_overlays(faces)
-            else:
-                logger.error("not found body in request.")
-                self.set_status(400, "not found body in request.")
-
+        except (TypeError, AttributeError) as err:
+            logger.error(err)
+            self.set_status(400, str(err))
+            return
         except Exception as err:
             logger.error(err)
             self.set_status(err.status_code)
