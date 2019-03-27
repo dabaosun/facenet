@@ -12,14 +12,15 @@ import argparse
 import configparser
 import sys
 import os
+
 import face
 import api
+import multiprocessing
 
 filepath = os.path.join(os.path.dirname(__file__), 'logging.conf')
 logging.config.fileConfig(filepath)
 
 logger = logging.getLogger("server")
-
 
 class APIServer(object):
     def __init__(self, config):
@@ -61,11 +62,8 @@ def parse_arguments(argv):
         '--config', type=str, help='config file', required=True)
     return parser.parse_args(argv)
 
-
 if __name__ == "__main__":
-    args = parse_arguments(sys.argv[1:])
     cfg = configparser.ConfigParser()
-
     if cfg.read(os.path.join(os.path.dirname(__file__), 'roi.conf')):
         for each_section in cfg.sections():
             logger.info("[%s]" % (each_section))
@@ -73,3 +71,5 @@ if __name__ == "__main__":
                 logger.info("%s = %s" % (each_key, each_val))
         service = APIServer(cfg)
         service.main()
+
+
