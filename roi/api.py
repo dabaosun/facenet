@@ -1,5 +1,6 @@
 # coding=utf-8
 import io
+import time
 import logging
 import face
 import cv2
@@ -56,7 +57,7 @@ class APIHandler(RequestHandler):
             box = face.bounding_box.tolist()
             if not face.embedding is None:
                 if (logger.getEffectiveLevel() == logging.DEBUG):
-                    np.save("/tmp/face-{0}-{1}.npy", face.embedding)
+                    np.save("/tmp/face-{0}-{1}.npy".format(i,time.time()), face.embedding)
                 faceslist.append({
                     "point": {
                         "x": box[0],
